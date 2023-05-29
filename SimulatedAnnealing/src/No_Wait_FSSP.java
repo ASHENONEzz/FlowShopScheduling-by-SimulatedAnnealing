@@ -1,25 +1,26 @@
-
 package src;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Random;
 
-public class SimulatedAnnealing {
+public class No_Wait_FSSP {
     public static void main(String[] args) {
 
         //定义工件和机器数
-        int[] n = new int[11];
-        int[] m = new int[11];
+        int[] n = new int[4];
+        int[] m = new int[4];
 
         //定义加工时间
         ArrayList<int[][]> processing_time = new ArrayList<>();
 
         //读取用例并处理数据
         try {
-            BufferedReader br = new BufferedReader(new FileReader("D:\\Ashen\\Desktop\\最优化方法\\最优化方法大作业-2023-置换流水车间调度-含测试用例11道题目.txt"));
-            for (int i = 0; i < 11; i++) {
+            BufferedReader br = new BufferedReader(new FileReader("D:\\Ashen\\Desktop\\最优化方法\\最优化方法大作业-2023-无等待置换流水车间调度-4道题目.txt"));
+            for (int i = 0; i < 4; i++) {
                 for (int j = 0; j < 2; j++) {
                     br.readLine();
                 }
@@ -40,18 +41,23 @@ public class SimulatedAnnealing {
             System.out.println(e.getMessage());
         }
 
-        //依次计算每个用例
-        for (int i = 0; i < 11; i++) {
-            long stime = System.currentTimeMillis();
+//        //test data input
+//        for (int i = 0; i < 4; i++) {
+//            System.out.println(n[i] + " " + m[i]);
+//            int[][] tmp = processing_time.get(i);
+//            for (int j = 0; j < n[i]; j++) {
+//                for (int k = 0; k < m[i]; k++) {
+//                    System.out.print(tmp[j][k] + " ");
+//                }
+//                System.out.println();
+//            }
+//        }
 
+        //依次计算每个用例
+        for (int i = 0; i < 4; i++) {
             System.out.println("Instance " + i + ":");
             anneal(n[i], processing_time.get(i));
-
-            long etime = System.currentTimeMillis();
-            System.out.printf("Execution time: %d ms", (etime - stime));
-            System.out.println();
         }
-
     }
 
     // 计算每个工件在每台机器上的完成时间
@@ -59,13 +65,49 @@ public class SimulatedAnnealing {
         int n = schedule.length;
         int m = processing_time[0].length;
         int[][] completion_time = new int[n+1][m+1];
-        for (int i = 1; i <= n; i++) {
-            for (int j = 1; j <= m; j++) {
-                //completion_time[i][j]表示第i个工件在第j个机器完成加工的总时间（包括之前阶段的时间）
-                //根据甘特图这应该是一个类似于动态规划的计算过程，否则会出现一台机器同时加工两个工件的情况
-                completion_time[i][j] = processing_time[schedule[i-1]][j-1] + Math.max(completion_time[i - 1][j], completion_time[i][j - 1]);
+
+        //initialize first row
+        for (int i = 1; i <= m; i++) {
+            completion_time[1][i] = completion_time[1][i-1] + processing_time[schedule[0]][i-1];
+        }
+
+        //calculate completion_time
+        for (int i = 2; i <= n; i++) {
+            //find the link-colum
+            int colum = 0;
+            for (int j = 1; j < m; j++) {
+                int sum_up = 0;
+                int sum_down = 0;
+                for (int k = j; k < m; k++) {
+                    sum_up += processing_time[schedule[i-2]][k];
+                    sum_down += processing_time[schedule[i-1]][k-1];
+                }
+                if (sum_down >= sum_up && processing_time[schedule[i-1]][j-1] >= processing_time[schedule[i-2]][j]) {
+                    colum = j;
+                    break;
+                }
+                colum = m;
+            }
+            completion_time[i][colum] = completion_time[i-1][colum] + processing_time[schedule[i-1]][colum-1];
+
+            //fill rest colum
+            for (int j = colum+1; j <= m; j++) {
+                completion_time[i][j] = completion_time[i][j-1] + processing_time[schedule[i-1]][j-1];
+            }
+            for (int j = colum-1; j > 0; j--) {
+                completion_time[i][j] = completion_time[i][j+1] - processing_time[schedule[i-1]][j-1];
             }
         }
+
+//        //test
+//        for (int i = 1; i <= n; i++) {
+//            for (int j = 1; j <= m; j++) {
+//                System.out.print(completion_time[i][j] + " ");
+//            }
+//            System.out.println();
+//        }
+//        System.out.println();
+
         return completion_time[n][m];
     }
 
@@ -130,21 +172,3 @@ public class SimulatedAnnealing {
         System.out.println("Total Completion Time: " + current_cost);
     }
 }
-
-//以上代码中的模拟退火算法实现了以下步骤：
-//
-//        1. 随机生成一个初始解，并计算其总完工时间。
-//        2. 对当前解进行若干次随机扰动，产生邻域解，并计算邻域解的总完工时间。
-//        3. 根据Metropolis准则接受或拒绝邻域解，更新当前解。
-//        4. 降温并重复步骤2-3，直到温度达到终止条件。
-//        5. 输出最优解和总完工时间。
-//
-//        在计算总完工时间时，我们使用了流水线调度问题的经典算法，即计算每个工件在
-//        每台机器上的完成时间，然后取最后一台机器上的最大完成时间作为总完工时间。
-//        在本算法中，我们使用了一个二维数组completion_time来记录每个工件在每台
-//        机器上的完成时间，并根据这个数组计算总完工时间。
-//
-//        此外，我们还实现了一个shuffle方法来随机打乱数组顺序，以产生随机的初始解。
-//
-//        以上代码只是一个简单的示例，实际应用中可能需要根据具体问题进行修改和优化。
-
